@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}ホーム - 写真アプリ{% endblock %}
+
+{% block content %}
+<!-- ヒーローセクション -->
+<section class="hero-section">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6">
+                <h1 class="display-4 fw-bold mb-4">
+                    <i class="bi bi-camera"></i> 写真アプリ
+                </h1>
+                <p class="lead mb-4">
+                    あなたの大切な思い出を美しく保存し、いつでもどこでもアクセスできます。
+                    写真のアップロード、整理、編集が簡単にできる便利なWebアプリです。
+                </p>
+                <div class="d-flex gap-3">
+                    {% if current_user.is_authenticated %}
+                        <a href="{{ url_for('mypage') }}" class="btn btn-light btn-lg">
+                            <i class="bi bi-person"></i> マイページへ
+                        </a>
+                    {% else %}
+                        <a href="{{ url_for('register') }}" class="btn btn-light btn-lg">
+                            <i class="bi bi-person-plus"></i> 今すぐ始める
+                        </a>
+                        <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-lg">
+                            <i class="bi bi-box-arrow-in-right"></i> ログイン
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-lg-6 text-center">
+                <i class="bi bi-images" style="font-size: 15rem; opacity: 0.8;"></i>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 機能紹介セクション -->
+<section class="py-5">
+    <div class="container">
+        <div class="row text-center mb-5">
+            <div class="col-lg-8 mx-auto">
+                <h2 class="h1 mb-3">主な機能</h2>
+                <p class="lead text-muted">
+                    シンプルで使いやすいインターフェースで、写真管理がもっと楽しくなります
+                </p>
+            </div>
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <div class="feature-icon mb-3">
+                            <i class="bi bi-cloud-upload"></i>
+                        </div>
+                        <h4>簡単アップロード</h4>
+                        <p class="text-muted">
+                            ドラッグ&ドロップで写真を簡単にアップロード。
+                            対応形式: JPG, PNG, GIF, WebP
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <div class="feature-icon mb-3">
+                            <i class="bi bi-grid"></i>
+                        </div>
+                        <h4>美しい表示</h4>
+                        <p class="text-muted">
+                            レスポンシブデザインで、どのデバイスからでも
+                            美しく写真を閲覧できます。
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <div class="feature-icon mb-3">
+                            <i class="bi bi-pencil-square"></i>
+                        </div>
+                        <h4>写真の差し替え</h4>
+                        <p class="text-muted">
+                            アップロード済みの写真を新しい写真に
+                            簡単に差し替えることができます。
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTAセクション -->
+{% if not current_user.is_authenticated %}
+<section class="bg-light py-5">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto text-center">
+                <h2 class="h1 mb-4">今すぐ始めませんか？</h2>
+                <p class="lead mb-4 text-muted">
+                    無料でアカウントを作成して、あなたの写真を安全に保存しましょう。
+                </p>
+                <div class="d-flex gap-3 justify-content-center">
+                    <a href="{{ url_for('register') }}" class="btn btn-primary btn-lg">
+                        <i class="bi bi-person-plus"></i> 新規登録（無料）
+                    </a>
+                    <a href="{{ url_for('login') }}" class="btn btn-outline-primary btn-lg">
+                        <i class="bi bi-box-arrow-in-right"></i> ログイン
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endif %}
+{% endblock %}

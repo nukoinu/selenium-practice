@@ -1,0 +1,45 @@
+services:
+  photo-app:
+    build: ./sample-app
+    ports:
+      - "8080:8080"
+    networks:
+      - selenium-network
+
+  chrome:
+    image: selenium/standalone-chrome:4.25.0
+    ports:
+      - "4444:4444"
+    environment:
+      - SE_START_XVFB=false
+    networks:
+      - selenium-network
+    profiles:
+      - test
+
+  test-runner:
+    image: python:3.13-slim
+    working_dir: /app
+    volumes:
+      - ./tests:/app/tests
+      - ./pytest.ini:/app/pytest.ini
+      - ./requirements-test.txt:/app/requirements-test.txt
+    command: >
+      bash -c "
+        pip install -r requirements-test.txt &&
+        python -m pytest tests/test_chrome_app.py -v -s
+      "
+    depends_on:
+      - photo-app
+      - chrome
+    environment:
+      - PHOTO_APP_URL=http://photo-app:8080
+      - SELENIUM_URL=http://chrome:4444/wd/hub
+    networks:
+      - selenium-network
+    profiles:
+      - test
+
+networks:
+  selenium-network:
+    driver: bridge

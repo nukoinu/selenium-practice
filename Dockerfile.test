@@ -1,0 +1,53 @@
+# Ubuntu 22.04ベースのSeleniumテスト環境
+FROM ubuntu:22.04
+
+# タイムゾーンを設定してインタラクティブなプロンプトを避ける
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Asia/Tokyo
+
+# 必要なパッケージをインストール
+RUN apt-get update && \
+    apt-get install -y \
+    python3 \
+    python3-pip \
+    firefox \
+    xvfb \
+    wget \
+    unzip \
+    curl \
+    tzdata \
+    && apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Pythonのシンボリックリンクを作成
+RUN ln -sf /usr/bin/python3 /usr/bin/python
+
+# GeckoDriverをインストール
+RUN GECKODRIVER_VERSION=$(wget -qO- "https://api.github.com/repos/mozilla/geckodriver/releases/latest" | grep -Po '"tag_name": "\K.*?(?=")') && \
+    wget -O /tmp/geckodriver.tar.gz "https://github.com/mozilla/geckodriver/releases/download/$GECKODRIVER_VERSION/geckodriver-$GECKODRIVER_VERSION-linux64.tar.gz" && \
+    tar -xzf /tmp/geckodriver.tar.gz -C /usr/local/bin && \
+    chmod +x /usr/local/bin/geckodriver && \
+    rm /tmp/geckodriver.tar.gz
+
+# 作業ディレクトリを設定
+WORKDIR /app
+
+# Pythonの依存関係をインストール
+COPY requirements-test.txt .
+RUN pip3 install -r requirements-test.txt
+
+# テストファイルをコピー
+COPY tests/ ./tests/
+COPY pytest.ini ./
+
+# Xvfbを起動してテストを実行するスクリプトを作成
+RUN echo '#!/bin/bash\n\
+export DISPLAY=:99\n\
+Xvfb :99 -screen 0 1920x1080x24 -ac +extension GLX +render -noreset &\n\
+sleep 3\n\
+exec "$@"' > /usr/local/bin/run-with-xvfb.sh && \
+chmod +x /usr/local/bin/run-with-xvfb.sh
+
+# デフォルトコマンド
+ENTRYPOINT ["/usr/local/bin/run-with-xvfb.sh"]
+CMD ["python", "-m", "pytest", "tests/", "-v", "-s"]

@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+
+{% block title %}マイページ - 写真アプリ{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- ヘッダー -->
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center py-4">
+                <div>
+                    <h1>
+                        <i class="bi bi-person-circle"></i> {{ current_user.username }}さんのマイページ
+                    </h1>
+                    <p class="text-muted">
+                        <i class="bi bi-calendar"></i> 登録日: {{ current_user.created_at.strftime('%Y年%m月%d日') }}
+                        | <i class="bi bi-images"></i> 写真数: {{ photos|length }}枚
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- アップロードセクション -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-cloud-upload"></i> 写真をアップロード
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('upload_file') }}" enctype="multipart/form-data" id="uploadForm">
+                        <div class="mb-3">
+                            <label for="file" class="form-label">写真を選択</label>
+                            <input type="file" class="form-control" id="file" name="file" 
+                                   accept=".jpg,.jpeg,.png,.gif,.webp" required>
+                            <div class="form-text">
+                                対応形式: JPG, PNG, GIF, WebP（最大16MB）
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-upload"></i> アップロード
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 写真一覧 -->
+    <div class="row">
+        <div class="col-12">
+            <h3 class="mb-4">
+                <i class="bi bi-grid"></i> アップロード済み写真
+                {% if photos %}
+                    <span class="badge bg-primary">{{ photos|length }}</span>
+                {% endif %}
+            </h3>
+            
+            {% if photos %}
+                <div class="row g-3">
+                    {% for photo in photos %}
+                        <div class="col-sm-6 col-md-4 col-lg-3">
+                            <div class="card photo-card h-100">
+                                <img src="{{ url_for('uploaded_file', filename=photo.filename) }}" 
+                                     class="card-img-top photo-thumbnail" 
+                                     alt="{{ photo.original_filename }}"
+                                     data-bs-toggle="modal" 
+                                     data-bs-target="#photoModal{{ photo.id }}"
+                                     style="cursor: pointer;">
+                                <div class="card-body p-2">
+                                    <h6 class="card-title text-truncate" title="{{ photo.original_filename }}">
+                                        {{ photo.original_filename }}
+                                    </h6>
+                                    <p class="card-text">
+                                        <small class="text-muted">
+                                            <i class="bi bi-calendar"></i> 
+                                            {{ photo.uploaded_at.strftime('%Y/%m/%d %H:%M') }}
+                                        </small>
+                                    </p>
+                                </div>
+                                <div class="card-footer p-2">
+                                    <div class="d-flex justify-content-between">
+                                        <button class="btn btn-sm btn-outline-primary" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#replaceModal{{ photo.id }}">
+                                            <i class="bi bi-arrow-repeat"></i> 差替
+                                        </button>
+                                        <a href="{{ url_for('delete_photo', photo_id=photo.id) }}" 
+                                           class="btn btn-sm btn-outline-danger"
+                                           onclick="return confirm('この写真を削除しますか？')">
+                                            <i class="bi bi-trash"></i> 削除
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 写真表示モーダル -->
+                        <div class="modal fade" id="photoModal{{ photo.id }}" tabindex="-1">
+                            <div class="modal-dialog modal-lg modal-dialog-centered">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">{{ photo.original_filename }}</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body text-center">
+                                        <img src="{{ url_for('uploaded_file', filename=photo.filename) }}" 
+                                             class="img-fluid" alt="{{ photo.original_filename }}">
+                                        <div class="mt-3">
+                                            <p class="text-muted">
+                                                <i class="bi bi-calendar"></i> 
+                                                アップロード日時: {{ photo.uploaded_at.strftime('%Y年%m月%d日 %H:%M') }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                            閉じる
+                                        </button>
+                                        <button class="btn btn-primary" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#replaceModal{{ photo.id }}"
+                                                data-bs-dismiss="modal">
+                                            <i class="bi bi-arrow-repeat"></i> 写真を差し替え
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 写真差し替えモーダル -->
+                        <div class="modal fade" id="replaceModal{{ photo.id }}" tabindex="-1">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">写真を差し替え</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <form method="POST" action="{{ url_for('replace_photo', photo_id=photo.id) }}" enctype="multipart/form-data">
+                                        <div class="modal-body">
+                                            <div class="mb-3">
+                                                <label class="form-label">現在の写真</label>
+                                                <div class="text-center">
+                                                    <img src="{{ url_for('uploaded_file', filename=photo.filename) }}" 
+                                                         class="img-fluid rounded" style="max-height: 200px;" 
+                                                         alt="{{ photo.original_filename }}">
+                                                    <p class="mt-2 text-muted">{{ photo.original_filename }}</p>
+                                                </div>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="replaceFile{{ photo.id }}" class="form-label">新しい写真を選択</label>
+                                                <input type="file" class="form-control" id="replaceFile{{ photo.id }}" name="file" 
+                                                       accept=".jpg,.jpeg,.png,.gif,.webp" required>
+                                                <div class="form-text">
+                                                    対応形式: JPG, PNG, GIF, WebP（最大16MB）
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                                キャンセル
+                                            </button>
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="bi bi-arrow-repeat"></i> 差し替え実行
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-images" style="font-size: 5rem; color: #dee2e6;"></i>
+                    <h4 class="mt-3 text-muted">まだ写真がありません</h4>
+                    <p class="text-muted">上のフォームから写真をアップロードしてください。</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ファイル選択時の表示改善
+    const fileInputs = document.querySelectorAll('input[type="file"]');
+    fileInputs.forEach(input => {
+        input.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                // ファイルサイズチェック
+                const maxSize = 16 * 1024 * 1024; // 16MB
+                if (file.size > maxSize) {
+                    alert('ファイルサイズが大きすぎます。16MB以下のファイルを選択してください。');
+                    e.target.value = '';
+                    return;
+                }
+                
+                // ファイル形式チェック
+                const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+                if (!allowedTypes.includes(file.type)) {
+                    alert('対応していないファイル形式です。JPG、PNG、GIF、WebPファイルを選択してください。');
+                    e.target.value = '';
+                    return;
+                }
+            }
+        });
+    });
+    
+    // アップロード時のローディング表示
+    const uploadForm = document.getElementById('uploadForm');
+    if (uploadForm) {
+        uploadForm.addEventListener('submit', function() {
+            const submitBtn = this.querySelector('button[type="submit"]');
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>アップロード中...';
+            submitBtn.disabled = true;
+        });
+    }
+});
+</script>
+{% endblock %}
