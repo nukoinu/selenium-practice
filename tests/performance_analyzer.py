@@ -518,10 +518,29 @@ def main():
     """メイン実行関数"""
     analyzer = PerformanceAnalyzer()
     
-    if not analyzer.reports:
-        print("パフォーマンスレポートが見つかりません")
-        print("テストを実行してからこのスクリプトを実行してください")
+    # まず並列実行ログの分析を試行
+    parallel_analysis = analyzer.analyze_parallel_execution_logs("performance_logs")
+    
+    if parallel_analysis:
+        print("📊 並列実行ログを分析しています...")
+        report = analyzer.generate_parallel_analysis_report(parallel_analysis)
+        print(report)
+        
+        # ファイルに保存
+        json_path, report_path = analyzer.save_parallel_analysis(parallel_analysis)
+        print(f"\\n✅ 並列実行分析完了!")
         return
+    
+    # 並列実行ログがない場合は通常のレポート分析
+    if not analyzer.reports:
+        print("⚠️  分析対象のデータが見つかりません")
+        print("以下のいずれかのファイルが必要です:")
+        print("  - performance_logs/execution_*.json (並列実行ログ)")
+        print("  - performance_report_*.json (通常のパフォーマンスレポート)")
+        print("\\nテストを実行してからこのスクリプトを実行してください")
+        return
+    
+    print("📊 通常のパフォーマンスレポートを分析しています...")
     
     # 分析実行
     analyzer.analyze_trends()
@@ -535,7 +554,7 @@ def main():
     # HTMLレポート生成
     analyzer.generate_html_report()
     
-    print("\\n分析完了!")
+    print("\\n✅ 分析完了!")
 
 
 if __name__ == "__main__":
