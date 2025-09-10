@@ -7,6 +7,7 @@ import json
 import glob
 import os
 import statistics
+import argparse
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 from collections import defaultdict
@@ -261,6 +262,297 @@ class PerformanceAnalyzer:
         print(f"   レポート: {report_filepath}")
         
         return json_filepath, report_filepath
+    
+    def generate_parallel_html_report(self, analysis_result: Dict[str, Any], 
+                                    output_file: str = None) -> str:
+        """並列実行分析結果のHTMLレポート生成"""
+        if not analysis_result:
+            return "分析データがありません"
+        
+        if output_file is None:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output_file = f"performance_logs/parallel_performance_report_{timestamp}.html"
+        
+        # 統計データの準備
+        overall = analysis_result.get('overall_statistics', {})
+        checkpoints = analysis_result.get('checkpoint_statistics', {})
+        summary = analysis_result.get('summary', {})
+        execution_details = analysis_result.get('execution_details', [])
+        
+        # 最も遅いチェックポイントの特定
+        slowest_checkpoints = []
+        if checkpoints:
+            for name, stats in checkpoints.items():
+                avg_time = stats.get('total_elapsed', {}).get('mean', 0)
+                slowest_checkpoints.append({
+                    'name': name,
+                    'avg_time': avg_time,
+                    'count': stats.get('count', 0)
+                })
+            slowest_checkpoints.sort(key=lambda x: x['avg_time'], reverse=True)
+        
+        html_content = f"""
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>並列実行パフォーマンス分析レポート</title>
+    <style>
+        body {{ 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background-color: #f5f5f5;
+            color: #333;
+        }}
+        .container {{
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }}
+        .header {{ 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px; 
+            text-align: center;
+        }}
+        .header h1 {{ margin: 0; font-size: 2.5em; }}
+        .header p {{ margin: 10px 0 0 0; opacity: 0.9; }}
+        .content {{ padding: 30px; }}
+        .section {{ margin: 30px 0; }}
+        .section h2 {{ 
+            color: #4a5568; 
+            border-bottom: 3px solid #667eea; 
+            padding-bottom: 10px; 
+            margin-bottom: 20px;
+        }}
+        .stats-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }}
+        .stat-card {{
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }}
+        .stat-value {{
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }}
+        .stat-label {{
+            color: #718096;
+            margin-top: 5px;
+        }}
+        .checkpoint-table {{
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background-color: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }}
+        .checkpoint-table th {{
+            background-color: #667eea;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }}
+        .checkpoint-table td {{
+            padding: 12px 15px;
+            border-bottom: 1px solid #e2e8f0;
+        }}
+        .checkpoint-table tr:nth-child(even) {{
+            background-color: #f8fafc;
+        }}
+        .checkpoint-table tr:hover {{
+            background-color: #edf2f7;
+        }}
+        .execution-details {{
+            background-color: #f8fafc;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }}
+        .execution-item {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }}
+        .execution-item:last-child {{
+            border-bottom: none;
+        }}
+        .test-name {{
+            font-weight: 600;
+            color: #4a5568;
+        }}
+        .task-id {{
+            font-family: monospace;
+            background-color: #edf2f7;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }}
+        .time-badge {{
+            background-color: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+        }}
+        .highlight {{
+            background-color: #fed7d7;
+            border-left: 4px solid #f56565;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }}
+        .performance-tip {{
+            background-color: #c6f6d5;
+            border-left: 4px solid #38a169;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }}
+        .footer {{
+            background-color: #edf2f7;
+            padding: 20px;
+            text-align: center;
+            color: #718096;
+            font-size: 0.9em;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 並列実行パフォーマンス分析レポート</h1>
+            <p>生成日時: {analysis_result['analysis_timestamp']}</p>
+            <p>分析対象: {analysis_result['total_executions']}回の実行</p>
+        </div>
+        
+        <div class="content">
+            <div class="section">
+                <h2>📊 実行統計サマリー</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value">{overall.get('mean', 0):.3f}s</div>
+                        <div class="stat-label">平均実行時間</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">{overall.get('min', 0):.3f}s</div>
+                        <div class="stat-label">最短実行時間</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">{overall.get('max', 0):.3f}s</div>
+                        <div class="stat-label">最長実行時間</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">{overall.get('std_dev', 0):.3f}s</div>
+                        <div class="stat-label">標準偏差</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h2>📍 チェックポイント別パフォーマンス</h2>
+                <table class="checkpoint-table">
+                    <thead>
+                        <tr>
+                            <th>チェックポイント</th>
+                            <th>平均累積時間</th>
+                            <th>平均処理時間</th>
+                            <th>実行回数</th>
+                            <th>標準偏差</th>
+                        </tr>
+                    </thead>
+                    <tbody>"""
+        
+        # チェックポイント統計テーブル
+        checkpoints_summary = summary.get('checkpoints_summary', [])
+        for cp in checkpoints_summary:
+            html_content += f"""
+                        <tr>
+                            <td>{cp['name']}</td>
+                            <td>{cp['avg_total_elapsed']:.3f}s</td>
+                            <td>{cp['avg_time_since_last']:.3f}s</td>
+                            <td>{cp['count']}</td>
+                            <td>{checkpoints.get(cp['name'], {}).get('total_elapsed', {}).get('std_dev', 0):.3f}s</td>
+                        </tr>"""
+        
+        html_content += """
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="section">
+                <h2>🔍 実行詳細</h2>
+                <div class="execution-details">"""
+        
+        # 実行詳細
+        for detail in execution_details:
+            html_content += f"""
+                    <div class="execution-item">
+                        <div>
+                            <div class="test-name">{detail['test_name']}</div>
+                            <div class="task-id">{detail['task_id']}</div>
+                        </div>
+                        <div class="time-badge">{detail['total_time']:.3f}s</div>
+                    </div>"""
+        
+        html_content += """
+                </div>
+            </div>"""
+        
+        # パフォーマンス改善提案
+        if slowest_checkpoints:
+            slowest = slowest_checkpoints[0]
+            if slowest['avg_time'] > 0.5:  # 0.5秒以上の場合
+                html_content += f"""
+            <div class="section">
+                <h2>💡 パフォーマンス改善提案</h2>
+                <div class="highlight">
+                    <strong>注意:</strong> 「{slowest['name']}」が最も時間がかかっています（平均{slowest['avg_time']:.3f}秒）
+                </div>
+                <div class="performance-tip">
+                    <strong>改善提案:</strong>
+                    <ul>
+                        <li>該当処理の最適化を検討してください</li>
+                        <li>並列実行数の調整を試してみてください</li>
+                        <li>リソース使用量の監視を行ってください</li>
+                    </ul>
+                </div>
+            </div>"""
+        
+        html_content += f"""
+        </div>
+        
+        <div class="footer">
+            <p>このレポートは performance_analyzer.py により自動生成されました</p>
+            <p>詳細な分析データは JSON ファイルをご確認ください</p>
+        </div>
+    </div>
+</body>
+</html>"""
+        
+        # ファイルに保存
+        os.makedirs(os.path.dirname(output_file), exist_ok=True)
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        
+        return output_file
 
     def load_reports(self):
         """パフォーマンスレポートファイルを読み込み"""
@@ -516,19 +808,42 @@ class PerformanceAnalyzer:
 
 def main():
     """メイン実行関数"""
+    parser = argparse.ArgumentParser(description='パフォーマンステスト分析ツール')
+    parser.add_argument('--html-only', action='store_true', 
+                       help='HTMLレポートのみ生成（コンソール出力をスキップ）')
+    parser.add_argument('--output-dir', default='performance_logs',
+                       help='出力ディレクトリ（デフォルト: performance_logs）')
+    parser.add_argument('--no-html', action='store_true',
+                       help='HTMLレポート生成をスキップ')
+    
+    args = parser.parse_args()
+    
     analyzer = PerformanceAnalyzer()
     
     # まず並列実行ログの分析を試行
-    parallel_analysis = analyzer.analyze_parallel_execution_logs("performance_logs")
+    parallel_analysis = analyzer.analyze_parallel_execution_logs(args.output_dir)
     
     if parallel_analysis:
-        print("📊 並列実行ログを分析しています...")
-        report = analyzer.generate_parallel_analysis_report(parallel_analysis)
-        print(report)
+        if not args.html_only:
+            print("📊 並列実行ログを分析しています...")
+            report = analyzer.generate_parallel_analysis_report(parallel_analysis)
+            print(report)
         
         # ファイルに保存
-        json_path, report_path = analyzer.save_parallel_analysis(parallel_analysis)
-        print(f"\\n✅ 並列実行分析完了!")
+        json_path, report_path = analyzer.save_parallel_analysis(parallel_analysis, args.output_dir)
+        
+        # HTMLレポート生成（オプション）
+        html_report_path = None
+        if not args.no_html:
+            html_report_path = analyzer.generate_parallel_html_report(parallel_analysis)
+        
+        if not args.html_only:
+            print(f"\\n✅ 並列実行分析完了!")
+            if html_report_path:
+                print(f"   📄 HTMLレポート: {html_report_path}")
+        elif html_report_path:
+            print(f"HTMLレポートを生成しました: {html_report_path}")
+        
         return
     
     # 並列実行ログがない場合は通常のレポート分析
