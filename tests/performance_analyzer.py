@@ -378,6 +378,14 @@ class PerformanceAnalyzer:
         .checkpoint-table tr:hover {{
             background-color: #edf2f7;
         }}
+        .min-time {{
+            color: #38a169;
+            font-weight: 600;
+        }}
+        .max-time {{
+            color: #e53e3e;
+            font-weight: 600;
+        }}
         .execution-details {{
             background-color: #f8fafc;
             border-radius: 8px;
@@ -474,6 +482,8 @@ class PerformanceAnalyzer:
                             <th>チェックポイント</th>
                             <th>平均累積時間</th>
                             <th>平均処理時間</th>
+                            <th>最短処理時間</th>
+                            <th>最長処理時間</th>
                             <th>実行回数</th>
                             <th>標準偏差</th>
                         </tr>
@@ -483,13 +493,19 @@ class PerformanceAnalyzer:
         # チェックポイント統計テーブル
         checkpoints_summary = summary.get('checkpoints_summary', [])
         for cp in checkpoints_summary:
+            cp_stats = checkpoints.get(cp['name'], {})
+            time_since_last_stats = cp_stats.get('time_since_last', {})
+            total_elapsed_stats = cp_stats.get('total_elapsed', {})
+            
             html_content += f"""
                         <tr>
                             <td>{cp['name']}</td>
                             <td>{cp['avg_total_elapsed']:.3f}s</td>
                             <td>{cp['avg_time_since_last']:.3f}s</td>
+                            <td class="min-time">{time_since_last_stats.get('min', 0):.3f}s</td>
+                            <td class="max-time">{time_since_last_stats.get('max', 0):.3f}s</td>
                             <td>{cp['count']}</td>
-                            <td>{checkpoints.get(cp['name'], {}).get('total_elapsed', {}).get('std_dev', 0):.3f}s</td>
+                            <td>{total_elapsed_stats.get('std_dev', 0):.3f}s</td>
                         </tr>"""
         
         html_content += """
